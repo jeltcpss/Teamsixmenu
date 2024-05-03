@@ -280,3 +280,14 @@ namespace big::chat
 				});
 	}
 }
+
+namespace big
+{
+	struct chat_message
+	{
+		std::string sender;
+		std::string content;
+	};
+
+	extern std::queue<chat_message> translate_Queue;
+}

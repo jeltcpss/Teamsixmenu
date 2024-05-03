@@ -7,7 +7,6 @@
 
 namespace big
 {
-
 	api_service::api_service()
 	{
 		g_api_service = this;
@@ -16,6 +15,45 @@ namespace big
 	api_service::~api_service()
 	{
 		g_api_service = nullptr;
+	}
+
+	std::string api_service::get_translation_from_LibreTranslate(std::string message, std::string target_language)
+	{
+		std::string url = g.session.chat_translator_endpoint;
+		const auto response = g_http_client.post(url,
+		    {{"Content-Type", "application/json"}}, std::format(R"({{"q":"{}", "source":"auto", "target": "{}"}})", message, target_language));
+		if (response.status_code == 200)
+		{
+			try
+			{
+				nlohmann::json obj = nlohmann::json::parse(response.text);
+				std::string source_language = obj["detectedLanguage"]["language"];
+				std::string result = obj["translatedText"];
+				
+				if (source_language == g.session.chat_translator_target && g.session.chat_translator_bypass)
+					return "";
+				return result;
+			}
+			catch (std::exception& e)
+			{
+				g_notification_service.push_error("END_KICK"_T.data(),
+				    "BACKEND_END_SESSION_KICK_FORCE_SCRIPT_HOST_FAILED"_T.data());
+
+				LOG(WARNING) << "[Chat Translator]Error when parse JSON data: " << e.what();
+			}
+		}
+		else if (response.status_code == 0)
+		{
+			g.session.chat_translator = false;
+			g_notification_service.push_error("Chat Translator", "Cannot reach LibreTranslate server.\nRead cout.log for details");
+			LOG(WARNING) << "[Chat Translator]Cannot reach LibreTranslate server. Follow the guide in Yimmenu Wiki to setup LibreTranslate server on your computer.";
+		}
+		else
+		{
+			LOG(WARNING) << "[Chat Translator]Error when sending request. Status code: " << response.status_code << " Response: " << response.text;
+		}
+		
+		return "";
 	}
 
 	bool api_service::get_rid_from_username(std::string_view username, uint64_t& result)

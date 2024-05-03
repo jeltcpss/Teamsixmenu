@@ -71,6 +71,8 @@ namespace big
 			id.m_instance_id = buffer.Read<int32_t>(8);
 	}
 
+	std::queue<chat_message> translate_Queue;
+
 	bool hooks::receive_net_message(void* netConnectionManager, void* a2, rage::netConnection::InFrame* frame)
 	{
 		if (frame->get_event_type() != rage::netConnection::InFrame::EventType::FrameReceived)
@@ -142,6 +144,11 @@ namespace big
 				{
 					if (g.session.log_chat_messages)
 						chat::log_chat(message, player, SpamReason::NOT_A_SPAMMER, is_team);
+					if (g.session.chat_translator)
+					{
+						chat_message new_message{player->get_name(), message};
+						translate_Queue.push(new_message);
+					}
 
 					if (g.session.chat_commands && message[0] == g.session.chat_command_prefix)
 						command::process(std::string(message + 1), std::make_shared<chat_command_context>(player));
